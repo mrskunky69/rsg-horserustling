@@ -33,6 +33,13 @@ AddEventHandler("horse:MissionComplete", function()
 
 end)
 
+RegisterNetEvent("horse:NotifyRustlingPlayer")
+AddEventHandler("horse:NotifyRustlingPlayer", function(title, message)
+    if source == rustlingPlayer then
+        TriggerClientEvent('rNotify:NotifyLeft', source, title, message, "generic_textures", "tick", 4000)
+    end
+end)
+
 
 
 -- Event to notify police
@@ -76,17 +83,16 @@ AddEventHandler("horse:ResetRustlingPlayer", function()
     rustlingPlayer = nil
 end)
 
-RegisterServerEvent("horse:StartMission")
-AddEventHandler("horse:StartMission", function()
-    if resetTimerId then
-        clearTimeout(resetTimerId)
+RegisterServerEvent("horse:RequestMissionStart")
+AddEventHandler("horse:RequestMissionStart", function()
+    if not missionActive then
+        missionActive = true
+        rustlingPlayer = source
+        print("Mission activated")
+        TriggerClientEvent("horse:StartMission", source) -- Send only to the triggering player
+        TriggerEvent("horse:StartMission") -- Trigger the reset timer
+        TriggerClientEvent('rNotify:NotifyLeft', source, "Rustling", "Mission started! Defeat the bandits and rustle the horses.", "generic_textures", "tick", 4000)
+    else
+        TriggerClientEvent('RSGCore:Notify', source, "A rustling mission is already in progress.", "error")
     end
-    resetTimerId = SetTimeout(Config.MissionResetTime * 60000, function()
-        if missionActive then
-            missionActive = false
-            rustlingPlayer = nil
-            TriggerClientEvent("horse:ResetMission", -1)
-        end
-        resetTimerId = nil
-    end)
 end)

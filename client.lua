@@ -24,9 +24,7 @@ local function AddBlipForhorse(horse)
 end
 
 local function NotifyRustlingPlayer(title, message)
-    if rustlingPlayer == PlayerId() then
-        TriggerEvent('rNotify:NotifyLeft', title, message, "generic_textures", "tick", 4000)
-    end
+    TriggerEvent('rNotify:NotifyLeft', title, message, "generic_textures", "tick", 4000)
 end
 
 -- Entity spawning functions
@@ -159,11 +157,11 @@ local function AttachhorseToNearestPlayer()
     end
     
     ishorseAttached = true 
-    TriggerEvent('rNotify:NotifyLeft', "The wild horses are now following you", "Lead them carefully to the selling point.", "generic_textures", "tick", 4000)
+   TriggerServerEvent("horse:NotifyRustlingPlayer", "The wild horses are now following you", "Lead them carefully to the selling point.")
     
     -- Add a slight delay before showing the caution message
     Citizen.SetTimeout(4500, function()
-        TriggerEvent('rNotify:NotifyLeft', "Caution", "These horses are still wild and may be unpredictable!", "generic_textures", "warning", 4000)
+        TriggerServerEvent("horse:NotifyRustlingPlayer", "Caution", "These horses are still wild and may be unpredictable!")
     end)
 
     -- Notify server that horses are attached
@@ -278,7 +276,7 @@ Citizen.CreateThread(function()
                     if nearhorse then
                         AttachhorseToNearestPlayer()
                         TriggerServerEvent("horse:NotifyPolice")
-                        TriggerEvent('rNotify:NotifyLeft', "All bandits are dead!", " Round up the horses and take them to the Auction Yard.", "generic_textures", "tick", 4000)
+                        TriggerServerEvent("horse:NotifyRustlingPlayer", "All bandits are dead!", "Round up the horses and take them to the Auction Yard.")
                         
                         
                         if Config.AddGPSRoute then
@@ -319,14 +317,14 @@ Citizen.CreateThread(function()
                     if allhorseNear then
                         TriggerServerEvent("horse:Sellhorse", #horses)
                         ResetMission()
-                        TriggerEvent('rNotify:NotifyLeft', "COMPLETED!", " HORSES SOLD SUCCESSFULLY.", "generic_textures", "tick", 4000)
+                        TriggerServerEvent("horse:NotifyRustlingPlayer", "COMPLETED!", "HORSES SOLD SUCCESSFULLY.")
                         
                         -- Clear GPS route when mission is completed
                         if Config.AddGPSRoute then
                             ClearGpsMultiRoute()
                         end
                     else
-                        TriggerEvent('rNotify:NotifyLeft', "Almost there!", "Make sure all horses are close to the sell point.", "generic_textures", "tick", 4000)
+                        TriggerServerEvent("horse:NotifyRustlingPlayer", "Almost there!", "Make sure all horses are close to the sell point.")
                     end
                 else
                     
@@ -402,7 +400,7 @@ end)
 
 RegisterNetEvent("horse:SaleComplete")
 AddEventHandler("horse:SaleComplete", function(reward)
-    TriggerEvent('rNotify:NotifyLeft', "COMPLETED!", string.format("HORSES SOLD SUCCESSFULLY FOR $%d", reward), "generic_textures", "tick", 4000)
+    TriggerServerEvent("horse:NotifyRustlingPlayer", "COMPLETED!", string.format("HORSES SOLD SUCCESSFULLY FOR $%d", reward))
     ResetMission()
     
     -- Clear GPS route when mission is completed
@@ -430,7 +428,7 @@ RegisterNetEvent("horse:ResetMission")
 AddEventHandler("horse:ResetMission", function()
     if missionStarted then
         ResetMission()
-        TriggerEvent('rNotify:NotifyLeft', "Mission Failed", "The rustling mission has timed out.", "generic_textures", "cross", 4000)
+        TriggerServerEvent("horse:NotifyRustlingPlayer", "Mission Failed", "The rustling mission has timed out.")
     end
 end)
 
