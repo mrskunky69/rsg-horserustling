@@ -2,8 +2,6 @@ local RSGCore = exports['rsg-core']:GetCoreObject()
 local missionActive = false
 local rustlingPlayer = nil
 local resetTimerId = nil
-local missionTimerActive = false
-local missionEndTime = 0
 
 RegisterServerEvent("horse:SetActiveMissionPlayer")
 AddEventHandler("horse:SetActiveMissionPlayer", function()
@@ -14,7 +12,6 @@ RegisterServerEvent("horse:RequestMissionStart")
 AddEventHandler("horse:RequestMissionStart", function()
     if not missionActive then
         missionActive = true
-        print("Mission activated")
         TriggerClientEvent("horse:StartMission", -1) -- Broadcast to all clients
         TriggerEvent("horse:StartMission") -- Trigger the reset timer
     else
@@ -39,8 +36,6 @@ AddEventHandler("horse:NotifyRustlingPlayer", function(title, message)
         TriggerClientEvent('rNotify:NotifyLeft', source, title, message, "generic_textures", "tick", 4000)
     end
 end)
-
-
 
 -- Event to notify police
 RegisterServerEvent("horse:NotifyPolice")
@@ -88,7 +83,6 @@ AddEventHandler("horse:RequestMissionStart", function()
     if not missionActive then
         missionActive = true
         rustlingPlayer = source
-        print("Mission activated")
         TriggerClientEvent("horse:StartMission", source) -- Send only to the triggering player
         TriggerEvent("horse:StartMission") -- Trigger the reset timer
         TriggerClientEvent('rNotify:NotifyLeft', source, "Rustling", "Mission started! Defeat the bandits and rustle the horses.", "generic_textures", "tick", 4000)

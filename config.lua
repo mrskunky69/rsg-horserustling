@@ -35,7 +35,7 @@ Config.SellNPCHeading = 0.0 -- Facing North
 Config.SellingRadius = 5.0
 Config.PricePerhorse = 50
 Config.MissionTriggerRadius = 50.0
-Config.horseSellDistance = 10.0 
+Config.horseSellDistance = 10.0
 
 Config.AddGPSRoute = true
 
