@@ -5,10 +5,7 @@ local horses = {}
 local bandits = {}
 local horseBlips = {}
 local missionStarted = false
-local ishorsesAttached = false
 local rustlingPlayer = nil
-local sellPointMarker = nil
-
 
 
 -- Utility functions
@@ -23,33 +20,34 @@ local function AddBlipForhorse(horse)
     return blip
 end
 
-local function NotifyRustlingPlayer(title, message)
-    TriggerEvent('rNotify:NotifyLeft', title, message, "generic_textures", "tick", 4000)
-end
+-- Not being used
+-- local function NotifyRustlingPlayer(title, message)
+--     TriggerEvent('rNotify:NotifyLeft', title, message, "generic_textures", "tick", 4000)
+-- end
 
 -- Entity spawning functions
 local function Spawnhorse()
     for i = 1, Config.NumberOfhorse do
         local randomModelIndex = math.random(1, #Config.HorseModels)
         local horseModel = Config.HorseModels[randomModelIndex]
-        local horseHash = GetHashKey(horseModel)
-        
+        local horseHash = joaat(horseModel)
+
         RequestModel(horseHash)
         while not HasModelLoaded(horseHash) do
-            Citizen.Wait(10)
+            Wait(10)
         end
 
         local x = Config.horseSpawnLocation.x + (math.random() - 0.5) * 10.0
         local y = Config.horseSpawnLocation.y + (math.random() - 0.5) * 10.0
         local z = Config.horseSpawnLocation.z
         local heading = GetRandomHeading()
-        
+
         local horse = CreatePed(horseHash, x, y, z, heading, true, false)
         table.insert(horses, horse)
         Citizen.InvokeNative(0x283978A15512B2FE, horse, true)
-		
+
 		Citizen.InvokeNative(0xAEB97D84CDF3C00B, horse, true)
-        
+
         local blip = AddBlipForhorse(horse)
         table.insert(horseBlips, blip)
 
@@ -58,14 +56,14 @@ local function Spawnhorse()
 end
 
 local function SpawnBandits()
-    local banditHash = GetHashKey(Config.BanditModel)
-    local horseHash = GetHashKey(Config.HorseModel)
-    
+    local banditHash = joaat(Config.BanditModel)
+    local horseHash = joaat(Config.HorseModel)
+
     RequestModel(banditHash)
     RequestModel(horseHash)
-    
+
     while not HasModelLoaded(banditHash) or not HasModelLoaded(horseHash) do
-        Citizen.Wait(100)
+        Wait(100)
     end
 
     for i = 1, Config.NumberOfBandits do
@@ -73,18 +71,18 @@ local function SpawnBandits()
         local y = Config.BanditSpawnLocation.y + (math.random() - 0.5) * 15.0
         local z = Config.BanditSpawnLocation.z
         local heading = GetRandomHeading()
-        
+
         local horse = CreatePed(horseHash, x, y, z, heading, true, false)
         local bandit = CreatePed(banditHash, x, y, z, heading, true, false)
-        
+
         Citizen.InvokeNative(0x283978A15512B2FE, horse, true)
         Citizen.InvokeNative(0x283978A15512B2FE, bandit, true)
-        
+
         Citizen.InvokeNative(0x028F76B6E78246EB, bandit, horse, -1)  -- Set bandit on horse
-        
+
         table.insert(bandits, bandit)
     end
-    
+
     SetModelAsNoLongerNeeded(banditHash)
     SetModelAsNoLongerNeeded(horseHash)
 end
@@ -100,32 +98,32 @@ local function AreBanditsDead()
 end
 
 local function MakehorseFollow(horse, player)
-    Citizen.CreateThread(function()
+    CreateThread(function()
         while DoesEntityExist(horse) and not IsEntityDead(horse) do
             local playerCoords = GetEntityCoords(player)
             local horseCoords = GetEntityCoords(horse)
             local distance = #(playerCoords - horseCoords)
-            
+
             if distance > 3.0 then
                 TaskGoToEntity(horse, player, -1, 2.0, 2.0, 0, 0)
             else
                 ClearPedTasks(horse)
             end
-            
+
             -- Add some unpredictable behavior
             if math.random() < 0.05 then  -- 5% chance each second
                 local behavior = math.random(1, 3)
                 if behavior == 1 then
-                    TaskStartScenarioInPlace(horse, GetHashKey("WORLD_ANIMAL_HORSE_GRAZING"), -1, true)
+                    TaskStartScenarioInPlace(horse, joaat("WORLD_ANIMAL_HORSE_GRAZING"), -1, true)
                 elseif behavior == 2 then
-                    TaskStartScenarioInPlace(horse, GetHashKey("WORLD_ANIMAL_HORSE_STANDING"), -1, true)
+                    TaskStartScenarioInPlace(horse, joaat("WORLD_ANIMAL_HORSE_STANDING"), -1, true)
                 else
                     TaskWanderStandard(horse, 10.0, 10)
                 end
-                Citizen.Wait(5000)  -- Wait 5 seconds before resuming following
+                Wait(5000)  -- Wait 5 seconds before resuming following
             end
-            
-            Citizen.Wait(1000)
+
+            Wait(1000)
         end
     end)
 end
@@ -133,34 +131,34 @@ end
 local function AttachhorseToNearestPlayer()
     local playerPed = PlayerPedId()
     rustlingPlayer = PlayerId()
-    
+
     for _, currentHorse in ipairs(horses) do
         if DoesEntityExist(currentHorse) and not IsEntityDead(currentHorse) then
             -- Keep the horse wild
             Citizen.InvokeNative(0xAEB97D84CDF3C00B, currentHorse, true)
-            
+
             -- Temporarily calm the horse for leading
             Citizen.InvokeNative(0x76B58A23BCD2D2C1, currentHorse, true)
-            
+
             -- Set animal as being led
             Citizen.InvokeNative(0x3AD51CAB001A6108, currentHorse, true)
-            
+
             -- Make the horse ignore events to follow the player
             SetBlockingOfNonTemporaryEvents(currentHorse, true)
-            
+
             -- Make the horse follow the player
             TaskFollowToOffsetOfEntity(currentHorse, playerPed, 0.0, -3.0, 0.0, 1.0, -1, 1.0, true)
-            
+
             -- Start the custom follow behavior
             MakehorseFollow(currentHorse, playerPed)
         end
     end
-    
-    ishorseAttached = true 
+
+    ishorseAttached = true
    TriggerServerEvent("horse:NotifyRustlingPlayer", "The wild horses are now following you", "Lead them carefully to the selling point.")
-    
+
     -- Add a slight delay before showing the caution message
-    Citizen.SetTimeout(4500, function()
+    SetTimeout(4500, function()
         TriggerServerEvent("horse:NotifyRustlingPlayer", "Caution", "These horses are still wild and may be unpredictable!")
     end)
 
@@ -169,37 +167,37 @@ local function AttachhorseToNearestPlayer()
 end
 
 
+-- Not being used
+-- local function IsNearSellingPoint()
+--     local playerPed = PlayerPedId()
+--     local playerCoords = GetEntityCoords(playerPed)
+--     local sellPointDistance = #(playerCoords - Config.SellNPCLocation)
 
-local function IsNearSellingPoint()
-    local playerPed = PlayerPedId()
-    local playerCoords = GetEntityCoords(playerPed)
-    local sellPointDistance = #(playerCoords - Config.SellNPCLocation)
-    
-    if sellPointDistance <= Config.SellingRadius then
-        
-        local allhorseNear = true
-        for _, horse in ipairs(horse) do
-            if DoesEntityExist(horse) and not IsEntityDead(horse) then
-                local horseCoords = GetEntityCoords(horse)
-                local horseDistance = #(horseCoords - Config.SellNPCLocation)
-                if horseDistance > Config.horseSellDistance then
-                    allhorseNear = false
-                    break
-                end
-            end
-        end
-        return allhorseNear
-    end
-    return false
-end
+--     if sellPointDistance <= Config.SellingRadius then
 
-Citizen.CreateThread(function()
+--         local allhorseNear = true
+--         for _, horse in ipairs(horse) do
+--             if DoesEntityExist(horse) and not IsEntityDead(horse) then
+--                 local horseCoords = GetEntityCoords(horse)
+--                 local horseDistance = #(horseCoords - Config.SellNPCLocation)
+--                 if horseDistance > Config.horseSellDistance then
+--                     allhorseNear = false
+--                     break
+--                 end
+--             end
+--         end
+--         return allhorseNear
+--     end
+--     return false
+-- end
+
+CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        Wait(0)
         if missionStarted and ishorseAttached then
-            DrawMarker(1, Config.SellNPCLocation.x, Config.SellNPCLocation.y, Config.SellNPCLocation.z - 1.0, 
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
-                Config.horseSellDistance * 2, Config.horseSellDistance * 2, 1.0, 
+            DrawMarker(1, Config.SellNPCLocation.x, Config.SellNPCLocation.y, Config.SellNPCLocation.z - 1.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                Config.horseSellDistance * 2, Config.horseSellDistance * 2, 1.0,
                 255, 255, 0, 100, false, true, 2, false, nil, nil, false)
         end
     end
@@ -234,25 +232,23 @@ local function ResetMission()
     for _, blip in ipairs(horseBlips) do
         RemoveBlip(blip)
     end
-    horse = {}  
+    horse = {}
     bandits = {}
     horseBlips = {}
     ishorseAttached = false
     missionStarted = false
     rustlingPlayer = nil
 
-    
+
     if Config.AddGPSRoute then
         ClearGpsMultiRoute()
     end
 end
 
-
-
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(0)  -- Changed to 0 for more responsive checks
-        
+        Wait(0)  -- Changed to 0 for more responsive checks
+
         if missionStarted then
             local playerPed = PlayerPedId()
             local playerCoords = GetEntityCoords(playerPed)
@@ -260,27 +256,27 @@ Citizen.CreateThread(function()
             if not ishorseAttached then
                 if AreBanditsDead() then
                     local nearhorse = false
-                    
+
                     for _, horse in ipairs(horses) do
                         if DoesEntityExist(horse) and not IsEntityDead(horse) then
                             local horseCoords = GetEntityCoords(horse)
                             local distance = #(playerCoords - horseCoords)
-                            
+
                             if distance < 5.0 then
                                 nearhorse = true
                                 break
                             end
                         end
                     end
-                    
+
                     if nearhorse then
                         AttachhorseToNearestPlayer()
                         TriggerServerEvent("horse:NotifyPolice")
                         TriggerServerEvent("horse:NotifyRustlingPlayer", "All bandits are dead!", "Round up the horses and take them to the Auction Yard.")
-                        
-                        
+
+
                         if Config.AddGPSRoute then
-                            StartGpsMultiRoute(GetHashKey("COLOR_RED"), true, true)
+                            StartGpsMultiRoute(joaat("COLOR_RED"), true, true)
                             AddPointToGpsMultiRoute(Config.SellNPCLocation.x, Config.SellNPCLocation.y, Config.SellNPCLocation.z)
                             SetGpsMultiRouteRender(true)
                         end
@@ -291,7 +287,7 @@ Citizen.CreateThread(function()
                         if DoesEntityExist(bandit) and not IsEntityDead(bandit) then
                             local banditCoords = GetEntityCoords(bandit)
                             local distance = #(playerCoords - banditCoords)
-                            
+
                             if distance < Config.BanditAggroRadius then
                                 TaskCombatPed(bandit, playerPed, 0, 16)
                             end
@@ -300,7 +296,7 @@ Citizen.CreateThread(function()
                 end
             else
                 local sellPointDistance = #(playerCoords - Config.SellNPCLocation)
-                
+
                 if sellPointDistance <= Config.SellingRadius then
                     local allhorseNear = true
                     for _, currentHorse in ipairs(horses) do
@@ -318,7 +314,7 @@ Citizen.CreateThread(function()
                         TriggerServerEvent("horse:Sellhorse", #horses)
                         ResetMission()
                         TriggerServerEvent("horse:NotifyRustlingPlayer", "COMPLETED!", "HORSES SOLD SUCCESSFULLY.")
-                        
+
                         -- Clear GPS route when mission is completed
                         if Config.AddGPSRoute then
                             ClearGpsMultiRoute()
@@ -327,27 +323,27 @@ Citizen.CreateThread(function()
                         TriggerServerEvent("horse:NotifyRustlingPlayer", "Almost there!", "Make sure all horses are close to the sell point.")
                     end
                 else
-                    
+
                     local allhorseFollowing = true
                     for _, currentHorse in ipairs(horses) do
                         if DoesEntityExist(currentHorse) and not IsEntityDead(currentHorse) then
                             local horseCoords = GetEntityCoords(currentHorse)
                             local distance = #(playerCoords - horseCoords)
-                            
+
                             if distance > 10.0 then  -- Adjust this distance as needed
                                 allhorseFollowing = false
                                 break
                             end
                         end
                     end
-                    
-                 
+
+
                 end
             end
 
-           
 
-            
+
+
         end
     end
 end)
@@ -364,32 +360,32 @@ function Draw3DText(x, y, z, text)
     end
 end
 
-Citizen.CreateThread(function()
+CreateThread(function()
     local blip = N_0x554d9d53f696d002(1664425300, Config.SellPointBlip.x, Config.SellPointBlip.y, Config.SellPointBlip.z)
     SetBlipSprite(blip, Config.SellPointBlip.sprite, 1)
     SetBlipScale(blip, 0.2)
     Citizen.InvokeNative(0x9CB1A1623062F402, blip, Config.SellPointBlip.name)
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        Wait(0)
         if missionStarted and ishorseAttached then
-            DrawMarker(1, Config.SellPointBlip.x, Config.SellPointBlip.y, Config.SellPointBlip.z - 1.0, 
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+            DrawMarker(1, Config.SellPointBlip.x, Config.SellPointBlip.y, Config.SellPointBlip.z - 1.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 2.0, 2.0, 1.0, 255, 0, 0, 200, false, true, 2, false, nil, nil, false)
         end
     end
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(1000)  -- Check every second
+        Wait(1000)  -- Check every second
         if not missionStarted then
             local playerPed = PlayerPedId()
             local playerCoords = GetEntityCoords(playerPed)
             local distanceToBanditArea = #(playerCoords - Config.BanditSpawnLocation)
-            
+
             if distanceToBanditArea <= Config.MissionTriggerRadius then
                 TriggerServerEvent("horse:RequestMissionStart")
             end
@@ -397,24 +393,18 @@ Citizen.CreateThread(function()
     end
 end)
 
-
 RegisterNetEvent("horse:SaleComplete")
 AddEventHandler("horse:SaleComplete", function(reward)
     TriggerServerEvent("horse:NotifyRustlingPlayer", "COMPLETED!", string.format("HORSES SOLD SUCCESSFULLY FOR $%d", reward))
     ResetMission()
-    
+
     -- Clear GPS route when mission is completed
     if Config.AddGPSRoute then
         ClearGpsMultiRoute()
     end
-    
+
     TriggerServerEvent("horse:MissionComplete")
 end)
-
-
-
-
-
 
 -- Event handler for respawning (if needed)
 RegisterNetEvent("horse:Respawn")
@@ -431,4 +421,3 @@ AddEventHandler("horse:ResetMission", function()
         TriggerServerEvent("horse:NotifyRustlingPlayer", "Mission Failed", "The rustling mission has timed out.")
     end
 end)
-
